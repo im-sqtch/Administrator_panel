@@ -16,31 +16,58 @@ class AdminLoginController extends Controller
         return view('admin.login');
     }
 
-    public function admin_forget_password()
+    public function forget_password()
     {
         return view('admin.forget_password');
     }
+    
+    public function forget_password_submit(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email'
+        ]);
 
-    public function admin_login_submit(Request $request)
+        $admin_data = Admin::where('email',$request->email)->first();
+
+        if(!$admin_data) {
+            return redirect()->back()->with('error','Invalid email address!');
+        }
+
+        $token = hash('sha256',time());
+
+        $admin_data->token = $token;
+        $admin_data->update();
+
+        $reset_link = url('admin/reset-password/'.$token.'/'.$request->email);
+        $subject = 'Reset password';
+        $message = 'Please click on the following link: <br>';
+        $message .= '<a href="'.$reset_link.'">Click here</a>';
+
+        \Mail::to($request->email)->send(new Websitemail($subject,$message));
+
+        return redirect()->route('admin_login')->with('success', 'Check your email!');
+    }
+
+    public function login_submit(Request $request)
     {
         $request->validate([
             'email' => 'required|email',
             'password' => 'required'
         ]);
 
-        $credentials = [
+        $credential = [
             'email' => $request->email,
             'password' => $request->password
         ];
 
-        if(Auth::guard('admin')->attempt($credentials)) {
+        if(Auth::guard('admin')->attempt($credential)) {
             return redirect()->route('admin_home');
         } else {
             return redirect()->route('admin_login')->with('error', 'Information is not correct!');
         }
     }
 
-    public function admin_logout()
+    public function logout()
     {
         Auth::guard('admin')->logout();
         return redirect()->route('admin_login');
