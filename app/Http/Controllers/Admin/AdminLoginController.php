@@ -40,8 +40,8 @@ class AdminLoginController extends Controller
 
         $reset_link = url('admin/reset-password/'.$token.'/'.$request->email);
         $subject = 'Reset password';
-        $message = 'Please click on the following link: <br>';
-        $message .= '<a href="'.$reset_link.'">Click here</a>';
+        $message = '<p>Please click on the following link: </p><br>';
+        //$message .= '<a href="'.$reset_link.'">Click here</a>';
 
         \Mail::to($request->email)->send(new Websitemail($subject,$message));
 
@@ -71,5 +71,32 @@ class AdminLoginController extends Controller
     {
         Auth::guard('admin')->logout();
         return redirect()->route('admin_login');
+    }
+
+    public function reset_password($token, $email)
+    {
+        $admin_data = Admin::where('token', $token)->where('email', $email)->first();
+
+        if(!$admin_data) {
+            return redirect()->route('admin_login');
+        }
+
+        return view('admin.reset_password', compact('token', 'email'));
+    }
+
+    public function reset_password_submit(Request $request)
+    {
+        $request->validate([
+            'password' => 'required',
+            'retype_password' => 'required|same:password',
+        ]);
+
+        $admin_data = Admin::where('token', $request->token)->where('email', $request->email)->first();
+
+        $admin_data->password = Hash::make($request->password);
+        $admin_data->token = '';
+        $admin_data->update();
+
+        return redirect()->route('admin_login')->with('success', 'Password has been reset successfully');
     }
 }
